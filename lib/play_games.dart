@@ -4,7 +4,7 @@ import 'dart:ui';
 
 import 'package:flutter/services.dart';
 
-const MethodChannel _channel = const MethodChannel('play_games');
+const MethodChannel _channel = MethodChannel('play_games');
 
 class CloudSaveError implements Exception {
   String? type;
@@ -91,12 +91,10 @@ class Account {
   String? iconImageUri;
 
   Future<Image> get hiResImage async =>
-      await _fetchToMemory(await (_channel.invokeMethod('getHiResImage')
-          as FutureOr<Map<dynamic, dynamic>>));
+      await _fetchToMemory(await _channel.invokeMethod('getHiResImage'));
 
   Future<Image> get iconImage async =>
-      await _fetchToMemory(await (_channel.invokeMethod('getIconImage')
-          as FutureOr<Map<dynamic, dynamic>>));
+      await _fetchToMemory(await _channel.invokeMethod('getIconImage'));
 }
 
 class Snapshot {
@@ -104,19 +102,19 @@ class Snapshot {
   Map<String, String>? metadata;
 
   Snapshot.fromMap(Map data) {
-    this.content = data['content'];
-    this.metadata = (data['metadata'] as Map<dynamic, dynamic>? ?? {})
+    content = data['content'];
+    metadata = (data['metadata'] as Map<dynamic, dynamic>? ?? {})
         .cast<String, String>();
   }
 }
 
 Future<Image> _fetchToMemory(Map<dynamic, dynamic> result) {
-  Uint8List? bytes = result['bytes'];
+  final Uint8List? bytes = result['bytes'];
   if (bytes == null) {
     print('was null, mate');
     return Future.value(null);
   }
-  Completer<Image> completer = new Completer();
+  final Completer<Image> completer = Completer();
   decodeImageFromList(bytes, (image) => completer.complete(image));
   return completer.future;
 }
@@ -151,51 +149,47 @@ class PlayGames {
   }
 
   static Future<bool?> showAchievements() async {
-    final Map<dynamic, dynamic> map = await (_channel
-        .invokeMethod('showAchievements') as FutureOr<Map<dynamic, dynamic>>);
+    final Map<dynamic, dynamic> map =
+        await _channel.invokeMethod('showAchievements');
     return map['closed'];
   }
 
   static Future<bool?> showLeaderboard(String leaderboardId) async {
-    final Map<dynamic, dynamic> map = await (_channel
-            .invokeMethod('showLeaderboard', {'leaderboardId': leaderboardId})
-        as FutureOr<Map<dynamic, dynamic>>);
+    final Map<dynamic, dynamic> map = await _channel
+        .invokeMethod('showLeaderboard', {'leaderboardId': leaderboardId});
     return map['closed'];
   }
 
   static Future<bool?> showAllLeaderboards() async {
     final Map<dynamic, dynamic> map =
-        await (_channel.invokeMethod('showAllLeaderboards')
-            as FutureOr<Map<dynamic, dynamic>>);
+        await _channel.invokeMethod('showAllLeaderboards');
     return map['closed'];
   }
 
   static Future<Snapshot> openSnapshot(String name) async {
     final Map<dynamic, dynamic> map =
-        await (_channel.invokeMethod('openSnapshot', {'snapshotName': name})
-            as FutureOr<Map<dynamic, dynamic>>);
+        await _channel.invokeMethod('openSnapshot', {'snapshotName': name});
     if (map['type'] != null && !map['type'].isEmpty) {
       if (map['type'] == 'SNAPSHOT_CONFLICT') {
-        throw new CloudSaveConflictError(
+        throw CloudSaveConflictError(
             map['type'],
             map['message'],
             map['conflictId'],
             Snapshot.fromMap(map['local']),
             Snapshot.fromMap(map['server']));
       }
-      throw new CloudSaveError(map['type'], map['message']);
+      throw CloudSaveError(map['type'], map['message']);
     }
     return Snapshot.fromMap(map);
   }
 
   static Future<bool?> saveSnapshot(String name, String content,
       {Map<String, String> metadata = const {}}) async {
-    final Map<dynamic, dynamic> result = await (_channel.invokeMethod(
-            'saveSnapshot',
-            {'snapshotName': name, 'content': content, 'metadata': metadata})
-        as FutureOr<Map<dynamic, dynamic>>);
+    final Map<dynamic, dynamic> result = await _channel.invokeMethod(
+        'saveSnapshot',
+        {'snapshotName': name, 'content': content, 'metadata': metadata});
     if (result['type'] != null && !result['type'].isEmpty) {
-      throw new CloudSaveError(result['type'], result['message']);
+      throw CloudSaveError(result['type'], result['message']);
     }
     return result['status'] as bool?;
   }
@@ -204,40 +198,38 @@ class PlayGames {
       String name, String conflictId, String content,
       {Map<String, String> metadata = const {}}) async {
     final Map<dynamic, dynamic> map =
-        await (_channel.invokeMethod('resolveSnapshotConflict', {
+        await _channel.invokeMethod('resolveSnapshotConflict', {
       'snapshotName': name,
       'conflictId': conflictId,
       'content': content,
       'metadata': metadata
-    }) as FutureOr<Map<dynamic, dynamic>>);
+    });
     if (map['type'] != null && !map['type'].isEmpty) {
       if (map['type'] == 'SNAPSHOT_CONFLICT') {
-        throw new CloudSaveConflictError(
+        throw CloudSaveConflictError(
             map['type'],
             map['message'],
             map['conflictId'],
             Snapshot.fromMap(map['local']),
             Snapshot.fromMap(map['server']));
       }
-      throw new CloudSaveError(map['type'], map['message']);
+      throw CloudSaveError(map['type'], map['message']);
     }
     return Snapshot.fromMap(map);
   }
 
   static Future<SubmitScoreResults> submitScoreByName(
       String leaderboardName, int score) async {
-    final Map<dynamic, dynamic> map = await (_channel.invokeMethod(
-            'submitScoreByName',
-            {'leaderboardName': leaderboardName, 'score': score})
-        as FutureOr<Map<dynamic, dynamic>>);
+    final Map<dynamic, dynamic> map = await _channel.invokeMethod(
+        'submitScoreByName',
+        {'leaderboardName': leaderboardName, 'score': score});
     return _parseSubmitScore(map);
   }
 
   static Future<SubmitScoreResults> submitScoreById(
       String leaderboardId, int score) async {
-    final Map<dynamic, dynamic> map = await (_channel.invokeMethod(
-            'submitScoreById', {'leaderboardId': leaderboardId, 'score': score})
-        as FutureOr<Map<dynamic, dynamic>>);
+    final Map<dynamic, dynamic> map = await _channel.invokeMethod(
+        'submitScoreById', {'leaderboardId': leaderboardId, 'score': score});
     return _parseSubmitScore(map);
   }
 
@@ -268,13 +260,13 @@ class PlayGames {
       {CollectionType collectionType = CollectionType.COLLECTION_PUBLIC,
       bool forceReload = false}) async {
     final Map<dynamic, dynamic> map =
-        await (_channel.invokeMethod('loadTopScoresByName', {
+        await _channel.invokeMethod('loadTopScoresByName', {
       'leaderboardName': leaderboardName,
       'timeSpan': timeSpan.toString(),
       'collectionType': collectionType.toString(),
       'maxResults': maxResults,
       'forceReload': forceReload
-    }) as FutureOr<Map<dynamic, dynamic>>);
+    });
     return _parseScoreResults(map);
   }
 
@@ -283,13 +275,13 @@ class PlayGames {
       {CollectionType collectionType = CollectionType.COLLECTION_PUBLIC,
       bool forceReload = false}) async {
     final Map<dynamic, dynamic> map =
-        await (_channel.invokeMethod('loadTopScoresById', {
+        await _channel.invokeMethod('loadTopScoresById', {
       'leaderboardId': leaderboardId,
       'timeSpan': timeSpan.toString(),
       'collectionType': collectionType.toString(),
       'maxResults': maxResults,
       'forceReload': forceReload
-    }) as FutureOr<Map<dynamic, dynamic>>);
+    });
     return _parseScoreResults(map);
   }
 
@@ -298,13 +290,13 @@ class PlayGames {
       {CollectionType collectionType = CollectionType.COLLECTION_PUBLIC,
       bool forceReload = false}) async {
     final Map<dynamic, dynamic> map =
-        await (_channel.invokeMethod('loadPlayerCenteredScoresByName', {
+        await _channel.invokeMethod('loadPlayerCenteredScoresByName', {
       'leaderboardName': leaderboardName,
       'timeSpan': timeSpan.toString(),
       'collectionType': collectionType.toString(),
       'maxResults': maxResults,
       'forceReload': forceReload
-    }) as FutureOr<Map<dynamic, dynamic>>);
+    });
     return _parseScoreResults(map);
   }
 
@@ -313,13 +305,13 @@ class PlayGames {
       {CollectionType collectionType = CollectionType.COLLECTION_PUBLIC,
       bool forceReload = false}) async {
     final Map<dynamic, dynamic> map =
-        await (_channel.invokeMethod('loadPlayerCenteredScoresById', {
+        await _channel.invokeMethod('loadPlayerCenteredScoresById', {
       'leaderboardId': leaderboardId,
       'timeSpan': timeSpan.toString(),
       'collectionType': collectionType.toString(),
       'maxResults': maxResults,
       'forceReload': forceReload
-    }) as FutureOr<Map<dynamic, dynamic>>);
+    });
     return _parseScoreResults(map);
   }
 
@@ -345,15 +337,15 @@ class PlayGames {
       {bool requestEmail = true,
       bool scopeSnapshot = false,
       bool silentSignInOnly = false}) async {
-    final Map<dynamic, dynamic> map = await (_channel.invokeMethod('signIn', {
+    final Map<dynamic, dynamic> map = await _channel.invokeMethod('signIn', {
       'requestEmail': requestEmail,
       'scopeSnapshot': scopeSnapshot,
       'silentSignInOnly': silentSignInOnly
-    }));
-    SigninResultType type = _typeFromStr(map['type']);
-    SigninResult result = new SigninResult()..type = type;
+    });
+    final SigninResultType type = _typeFromStr(map['type']);
+    final SigninResult result = SigninResult()..type = type;
     if (type == SigninResultType.SUCCESS) {
-      result.account = new Account()
+      result.account = Account()
         ..id = map['id']
         ..displayName = map['displayName']
         ..email = map['email']
@@ -367,13 +359,12 @@ class PlayGames {
 
   static Future<SigninResult> getLastSignedInAccount() async {
     final Map<dynamic, dynamic> map =
-        await (_channel.invokeMethod('getLastSignedInAccount')
-            as FutureOr<Map<dynamic, dynamic>>);
-    SigninResultType type = _typeFromStr(map['type']);
-    SigninResult result = new SigninResult()..type = type;
+        await _channel.invokeMethod('getLastSignedInAccount');
+    final SigninResultType type = _typeFromStr(map['type']);
+    final SigninResult result = SigninResult()..type = type;
     if (type != SigninResultType.NOT_SIGNED_IN) {
       if (type == SigninResultType.SUCCESS) {
-        result.account = new Account()
+        result.account = Account()
           ..id = map['id']
           ..displayName = map['displayName']
           ..email = map['email']
